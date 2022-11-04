@@ -35,7 +35,7 @@ pub const NullCancel = packed struct(u4) {
         // should be safe, since there are no struct fields being aliased.
         return NullCancel{
             .prev = inputs,
-            .decision = @intToEnum(Decision, @bitCast(u2, packed struct { a: bool, b: bool }{
+            .decision = @intToEnum(Decision, @bitCast(u2, Inputs{
                 .a = a_is_active,
                 .b = b_is_active,
             })),
