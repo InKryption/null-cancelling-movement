@@ -43,7 +43,7 @@ pub const NullCancel = packed struct(u4) {
     }
 };
 
-fn expectDecisionInPlace(ncs: *NullCancel, inputs: NullCancel.Inputs, expected: ?NullCancel.Decision) !void {
+fn expectDecisionInPlace(ncs: *NullCancel, inputs: NullCancel.Inputs, expected: NullCancel.Decision) !void {
     const decision = ncs.decideInPlace(inputs);
     return std.testing.expectEqual(expected, decision);
 }
@@ -55,44 +55,43 @@ test {
     const @" ==>" = .{ .a = false, .b = true };
     const @"<-->" = .{ .a = true, .b = true };
 
-    try expectDecisionInPlace(&ncs, _______, null);
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
+    try expectDecisionInPlace(&ncs, _______, .none);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
-    try expectDecisionInPlace(&ncs, _______, null);
-    try expectDecisionInPlace(&ncs, @"<-->", null); // extremely rare case (no input followed by simultaneous inputs)
-    try expectDecisionInPlace(&ncs, _______, null);
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
+    try expectDecisionInPlace(&ncs, @"<-->", .none); // extremely rare case (no input followed by simultaneous inputs)
+    try expectDecisionInPlace(&ncs, _______, .none);
 
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
     try expectDecisionInPlace(&ncs, @"<-->", .b);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
     try expectDecisionInPlace(&ncs, @"<-->", .a);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
     try expectDecisionInPlace(&ncs, @"<-->", .a);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
     try expectDecisionInPlace(&ncs, @"<-->", .b);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
     try expectDecisionInPlace(&ncs, @"<-->", .b);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
     try expectDecisionInPlace(&ncs, @"<-->", .b);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
     try expectDecisionInPlace(&ncs, @"<-->", .a);
     try expectDecisionInPlace(&ncs, @" ==>", .b);
     try expectDecisionInPlace(&ncs, @"<-->", .a);
     try expectDecisionInPlace(&ncs, @"<== ", .a);
-    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlace(&ncs, _______, .none);
 }
