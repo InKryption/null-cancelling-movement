@@ -28,7 +28,14 @@ pub const NullCancel = packed struct(u4) {
         return ncs.decideInPlaceBiased(inputs, .none);
     }
 
-    const Bias = enum { a, b, none };
+    pub const Bias = enum {
+        /// Empirically, bias towards a is the cheapest.
+        a,
+        /// Bias towards b is only minimally more expensive than bias towards a
+        b,
+        /// No bias is the most expensive, but used by default as the null-hypothesis.
+        none,
+    };
 
     pub inline fn decideBiased(
         old: NullCancel,
@@ -43,22 +50,22 @@ pub const NullCancel = packed struct(u4) {
 
         const a_was_active = old.active and old.maybe_decision == .a;
         const b_was_active = switch (bias) {
-            .a => {},
-            .b => @compileError(""),
+            .a, .b => {},
             .none => old.active and old.maybe_decision == .b,
         };
 
         const a_is_active = switch (bias) {
-            .a => {},
-            .b => @compileError(""),
+            .a, .b => {},
             .none => a_is_held and (!b_is_held or (b_was_held and (!a_was_held or !b_was_active))),
         };
         const b_is_active = b_is_held and (!a_is_held or (a_was_held and (!b_was_held or !a_was_active)));
 
-        const maybe_decision = @intToEnum(Decision, @boolToInt(b_is_active));
+        const maybe_decision = @intToEnum(Decision, switch (bias) {
+            .a, .none => @boolToInt(b_is_active),
+            .b => @boolToInt(!b_is_active),
+        });
         const active = switch (bias) {
-            .a => a_is_held or b_is_held,
-            .b => @compileError(""),
+            .a, .b => a_is_held or b_is_held,
             .none => a_is_active or b_is_active,
         };
 
@@ -79,20 +86,6 @@ pub const NullCancel = packed struct(u4) {
         return ncs.decision();
     }
 };
-
-export fn decideInPlaceExport(
-    ncs: *NullCancel,
-    inputs: packed struct(usize) {
-        value: NullCancel.Inputs,
-        _pad: enum(u62) { unset = 0 } = .unset,
-    },
-) usize {
-    const decision = ncs.decideInPlaceBiased(inputs.value, .none) orelse return std.math.maxInt(usize);
-    return @bitCast(usize, packed struct(usize) {
-        decision: NullCancel.Decision,
-        _pad: enum(u63) { unset = 0 } = .unset,
-    }{ .decision = decision });
-}
 
 fn expectDecisionInPlace(ncs: *NullCancel, inputs: NullCancel.Inputs, expected: ?NullCancel.Decision) !void {
     const decision = ncs.decideInPlace(inputs);
@@ -120,6 +113,8 @@ test {
     try expectDecisionInPlace(&ncs, @"<-->", null); // extremely rare case (no input followed by simultaneous inputs)
     try expectDecisionInPlace(&ncs, _______, null);
     try expectDecisionInPlaceBiased(&ncs, @"<-->", .a, .a); // can handle said rare case using bias
+    try expectDecisionInPlace(&ncs, _______, null);
+    try expectDecisionInPlaceBiased(&ncs, @"<-->", .b, .b); // `
     try expectDecisionInPlace(&ncs, _______, null);
 
     try expectDecisionInPlace(&ncs, _______, null);
