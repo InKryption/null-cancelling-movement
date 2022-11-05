@@ -71,6 +71,17 @@ fn expectDecisionInPlace(ncs: *NCState, input: NCState.Input, expected: NCState.
     return std.testing.expectEqual(expected, decision);
 }
 
+test "Example Usage" {
+    var ncs = NCState.init();
+    try std.testing.expectEqual(NCState.Decision.none, ncs.decision());
+
+    ncs = ncs.decide(NCState.input(true, false));
+    try std.testing.expectEqual(NCState.Decision.a, ncs.decision());
+
+    ncs = ncs.decide(NCState.input(true, true));
+    try std.testing.expectEqual(NCState.Decision.b, ncs.decision());
+}
+
 test {
     var ncs = NCState.init();
     const _______ = comptime NCState.input(false, false);
