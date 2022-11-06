@@ -1,6 +1,8 @@
 const std = @import("std");
 
-/// Monad-like enum used to implement null-cancelling input.
+/// Monad-like enum representing the transformation of two boolean inputs, into a single boolean input,
+/// wherein, for most cases, both inputs being enabled does not yield a zero-value. This allows for
+/// null-cancelling behaviour.
 pub const NCState = enum(u4) {
     // zig fmt: off
     off          = 0x0,
@@ -22,16 +24,14 @@ pub const NCState = enum(u4) {
         both_ab = 3,
     };
     pub fn input(a: bool, b: bool) Input {
-        const Bits = packed struct(u2) { a: bool, b: bool };
+        const Bits = packed struct { a: bool, b: bool };
         return @intToEnum(Input, @bitCast(u2, Bits{ .a = a, .b = b }));
     }
 
     pub fn decision(ncs: NCState) Decision {
-        return switch (ncs) {
-            .off => .none,
-            .a_exclusive, .a_transition => .a,
-            .b_exclusive, .b_transition => .b,
-        };
+        const maybe_a = @enumToInt(Decision.a) * @boolToInt(ncs.isEither(.a_exclusive, .a_transition));
+        const maybe_b = @enumToInt(Decision.b) * @boolToInt(ncs.isEither(.b_exclusive, .b_transition));
+        return @intToEnum(Decision, maybe_a | maybe_b);
     }
 
     pub fn decide(ncs: NCState, in: Input) NCState {
@@ -47,7 +47,23 @@ pub const NCState = enum(u4) {
         return @intToEnum(NCState, maybe_non_transition_value | maybe_transition_value);
     }
 
-    pub fn decideSwitch(ncs: NCState, in: Input) NCState {
+    inline fn isEither(ncs: NCState, x: NCState, y: NCState) bool {
+        return 0 != @enumToInt(ncs) & (@enumToInt(x) | @enumToInt(y));
+    }
+
+    // function behaviour models
+
+    /// Function whose behaviour the public `decision` function is intended to model
+    fn decisionModel(ncs: NCState) Decision {
+        return switch (ncs) {
+            .off => .none,
+            .a_exclusive, .a_transition => .a,
+            .b_exclusive, .b_transition => .b,
+        };
+    }
+
+    /// Function whose behaviour the public `decide` function is intended to model
+    fn decideModel(ncs: NCState, in: Input) NCState {
         return switch (in) {
             .none => .off,
             .only_a => .a_exclusive,
@@ -59,14 +75,39 @@ pub const NCState = enum(u4) {
             },
         };
     }
-
-    inline fn isEither(ncs: NCState, x: NCState, y: NCState) bool {
-        return 0 != @enumToInt(ncs) & (@enumToInt(x) | @enumToInt(y));
-    }
 };
 
+comptime {
+    var err_msg: []const u8 = "";
+    defer if (err_msg.len != 0) @compileError(err_msg);
+
+    const ncs_values = std.enums.values(NCState);
+    const input_values = std.enums.values(NCState.Input);
+
+    for (ncs_values) |ncs| {
+        const expected = ncs.decisionModel();
+        const actual = ncs.decision();
+        if (actual != expected) err_msg = err_msg ++ std.fmt.comptimePrint(
+            "Expected for `{}.decision(.{s})` to evaluate to `{}`, instead evaluated to `{}`.\n",
+            .{ @TypeOf(ncs), @tagName(ncs), expected, actual },
+        );
+    }
+
+    for (ncs_values) |ncs| {
+        for (input_values) |in| {
+            const expected = ncs.decideModel(in);
+            const actual = ncs.decide(in);
+
+            if (actual != expected) err_msg = err_msg ++ std.fmt.comptimePrint(
+                "Expected for `{}.decide(.{s}, {})` to evaluate to `{}`, instead evaluated to `{}`.\n",
+                .{ @TypeOf(ncs), @tagName(ncs), in, expected, actual },
+            );
+        }
+    }
+}
+
 fn expectDecisionInPlace(ncs: *NCState, input: NCState.Input, expected: NCState.Decision) !void {
-    ncs.* = ncs.decideSwitch(input);
+    ncs.* = ncs.decide(input);
     const decision = ncs.decision();
     return std.testing.expectEqual(expected, decision);
 }
