@@ -1,7 +1,7 @@
 const std = @import("std");
 
 /// Monad-like enum representing the transformation of two boolean inputs, into a single
-/// output with three possible values (as opposed to the 4 possible permutations the original 2).
+/// output with three possible values (as opposed to the original 4 possible permutations).
 pub const NCState = enum(u4) {
     // zig fmt: off
     off          = 0x0,
@@ -16,11 +16,7 @@ pub const NCState = enum(u4) {
     }
 
     pub const Bias = Decision;
-    pub const Decision = enum(u2) {
-        none,
-        a,
-        b,
-    };
+    pub const Decision = enum(u2) { none, a, b };
     pub const Input = enum(u2) {
         none = @enumToInt(NCState.off),
         only_a = @enumToInt(NCState.a_exclusive),
@@ -37,8 +33,9 @@ pub const NCState = enum(u4) {
 
     /// Use to initialise an input state.
     pub inline fn input(a: bool, b: bool) Input {
-        const Bits = packed struct { a: bool, b: bool };
-        return @intToEnum(Input, @bitCast(u2, Bits{ .a = a, .b = b }));
+        const a_int: u2 = @boolToInt(a);
+        const b_int: u2 = @as(u2, @boolToInt(b)) << 1;
+        return @intToEnum(Input, a_int | b_int);
     }
 
     /// Determines the next state based on the input.
@@ -66,18 +63,20 @@ pub const NCState = enum(u4) {
     ) NCState {
         const is_transition_value = in == .both_ab;
 
-        const maybe_non_transition_value = @boolToInt(!is_transition_value) * @enumToInt(in);
-        const maybe_transition_value = @boolToInt(is_transition_value) * blk: {
-            const maybe_transition_a_value = @enumToInt(NCState.a_transition) * @boolToInt(ncs.isEither(.b_exclusive, .a_transition) or (ncs == .off and comptime bias == .a));
-            const maybe_transition_b_value = @enumToInt(NCState.b_transition) * @boolToInt(ncs.isEither(.a_exclusive, .b_transition) or (ncs == .off and comptime bias == .b));
+        const exclusive_mask = @boolToInt(!is_transition_value) * @enumToInt(in);
+        const transition_mask = @boolToInt(is_transition_value) * blk: {
+            const bias_for_a = (comptime bias == .a) and ncs == .off;
+            const bias_for_b = (comptime bias == .b) and ncs == .off;
 
-            const maybe_transition_a_value_biased = maybe_transition_a_value * @boolToInt((comptime bias == .a) or maybe_transition_a_value != 0);
-            const maybe_transition_b_value_biased = maybe_transition_b_value * @boolToInt((comptime bias == .b) or maybe_transition_b_value != 0);
+            const enable_a_mask = bias_for_a or ncs.isEither(.b_exclusive, .a_transition);
+            const enable_b_mask = bias_for_b or ncs.isEither(.a_exclusive, .b_transition);
 
-            break :blk maybe_transition_a_value_biased | maybe_transition_b_value_biased;
+            const trans_a_mask = @enumToInt(NCState.a_transition) * @boolToInt(enable_a_mask);
+            const trans_b_mask = @enumToInt(NCState.b_transition) * @boolToInt(enable_b_mask);
+            break :blk trans_a_mask | trans_b_mask;
         };
 
-        return @intToEnum(NCState, maybe_non_transition_value | maybe_transition_value);
+        return @intToEnum(NCState, exclusive_mask | transition_mask);
     }
 
     /// Like `decision`, except the possible outputs are configurable.
@@ -86,9 +85,22 @@ pub const NCState = enum(u4) {
         comptime T: type,
         comptime values: DecisionCustomValues(T),
     ) T {
-        const a_bits = comptime toInt(T, values.a);
-        const b_bits = comptime toInt(T, values.b);
-        const none_bits = comptime toInt(T, values.none);
+        switch (@typeInfo(T)) {
+            .Int, .Float, .Bool, .Enum, .ErrorSet => {},
+            else => {
+                const arr = [_]T{ values.none, values.a, values.b };
+                const index = ncs.decisionCustom(std.math.IntFittingRange(0, arr.len), .{
+                    .none = 0,
+                    .a = 1,
+                    .b = 2,
+                });
+                return arr[index];
+            },
+        }
+
+        const a_bits = comptime toInt(values.a);
+        const b_bits = comptime toInt(values.b);
+        const none_bits = comptime toInt(values.none);
 
         const maybe_a = a_bits * @boolToInt(ncs.isEither(.a_exclusive, .a_transition));
         const maybe_b = b_bits * @boolToInt(ncs.isEither(.b_exclusive, .b_transition));
@@ -152,20 +164,26 @@ pub const NCState = enum(u4) {
     inline fn isEither(ncs: NCState, x: NCState, y: NCState) bool {
         return 0 != @enumToInt(ncs) & (@enumToInt(x) | @enumToInt(y));
     }
-    inline fn toInt(comptime T: type, value: T) std.meta.Int(.unsigned, @bitSizeOf(T)) {
-        const Int = std.meta.Int(.unsigned, @bitSizeOf(T));
-        return switch (@typeInfo(T)) {
-            .Enum => @bitCast(Int, @enumToInt(value)),
-            else => @bitCast(Int, value),
-        };
-    }
-    inline fn fromInt(comptime T: type, value: std.meta.Int(.unsigned, @bitSizeOf(T))) T {
-        return switch (@typeInfo(T)) {
-            .Enum => |enumeration| @intToEnum(T, @bitCast(enumeration.tag_type, value)),
-            else => @bitCast(T, value),
-        };
-    }
 };
+
+inline fn toInt(value: anytype) std.meta.Int(.unsigned, @bitSizeOf(@TypeOf(value))) {
+    const T = @TypeOf(value);
+    const Int = std.meta.Int(.unsigned, @bitSizeOf(T));
+    return @bitCast(Int, switch (@typeInfo(T)) {
+        .ErrorSet => @errorToInt(value),
+        .Bool => @boolToInt(value),
+        .Enum => @enumToInt(value),
+        else => value,
+    });
+}
+inline fn fromInt(comptime T: type, value: std.meta.Int(.unsigned, @bitSizeOf(T))) T {
+    return switch (@typeInfo(T)) {
+        .ErrorSet => @errSetCast(T, @intToError(value)),
+        .Bool => @bitCast(T, value),
+        .Enum => |enumeration| @intToEnum(T, @bitCast(enumeration.tag_type, value)),
+        else => @bitCast(T, value),
+    };
+}
 
 comptime {
     var err_msg: []const u8 = "";
