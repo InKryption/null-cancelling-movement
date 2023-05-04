@@ -1,25 +1,39 @@
 const std = @import("std");
 const assert = std.debug.assert;
 
+pub const Input = packed struct(u2) {
+    a: bool,
+    b: bool,
+
+    inline fn permutation(input: Input) Permutation {
+        return @intToEnum(Permutation, @bitCast(u2, input));
+    }
+    const Permutation = enum(u2) {
+        ab = @bitCast(u2, Input{ .a = true, .b = true }),
+        a_ = @bitCast(u2, Input{ .a = true, .b = false }),
+        _b = @bitCast(u2, Input{ .a = false, .b = true }),
+        __ = @bitCast(u2, Input{ .a = false, .b = false }),
+    };
+};
+
 pub const InputLock = enum(u3) {
-    inactive = @bitCast(u3, InputLockState{ .held_by = .none, .contested = false }),
-    stalemate = @bitCast(u3, InputLockState{ .held_by = .none, .contested = true }),
+    inactive = @bitCast(u3, State{ .held_by = .none, .contested = false }),
+    stalemate = @bitCast(u3, State{ .held_by = .none, .contested = true }),
 
-    a_exclusive = @bitCast(u3, InputLockState{ .held_by = .a, .contested = false }),
-    a_contested = @bitCast(u3, InputLockState{ .held_by = .a, .contested = true }),
+    a_exclusive = @bitCast(u3, State{ .held_by = .a, .contested = false }),
+    a_contested = @bitCast(u3, State{ .held_by = .a, .contested = true }),
 
-    b_exclusive = @bitCast(u3, InputLockState{ .held_by = .b }),
-    b_contested = @bitCast(u3, InputLockState{ .held_by = .b, .contested = true }),
+    b_exclusive = @bitCast(u3, State{ .held_by = .b }),
+    b_contested = @bitCast(u3, State{ .held_by = .b, .contested = true }),
 
     pub const Decision = enum(u2) { none, a, b };
-    pub const InputState = packed struct(u2) { a: bool, b: bool };
 
     pub inline fn init() InputLock {
         return .inactive;
     }
 
     pub inline fn decision(inlock: InputLock) Decision {
-        const inlock_state = @bitCast(InputLockState, @enumToInt(inlock));
+        const inlock_state = @bitCast(State, @enumToInt(inlock));
         return inlock_state.held_by;
     }
     comptime {
@@ -38,8 +52,8 @@ pub const InputLock = enum(u3) {
         }
     }
 
-    pub fn updateCopy(inlock: InputLock, inputs: InputState, comptime bias: Decision) InputLock {
-        return switch (@intToEnum(InputStatePermutation, @bitCast(u2, inputs))) {
+    pub fn updateCopy(inlock: InputLock, inputs: Input, comptime bias: Decision) InputLock {
+        return switch (inputs.permutation()) {
             .__ => .inactive,
             .a_ => .a_exclusive,
             ._b => .b_exclusive,
@@ -55,7 +69,7 @@ pub const InputLock = enum(u3) {
         };
     }
 
-    pub fn updateInPlace(inlock: *InputLock, inputs: InputState, comptime bias: Decision) void {
+    pub fn updateInPlace(inlock: *InputLock, inputs: Input, comptime bias: Decision) void {
         inlock.* = @call(.always_inline, updateCopy, .{ inlock.*, inputs, bias });
     }
 
@@ -72,23 +86,15 @@ pub const InputLock = enum(u3) {
         };
     }
 
-    const InputLockState = packed struct(u3) {
+    const State = packed struct(u3) {
         held_by: Decision = .none,
         contested: bool = false,
-    };
-    const InputStatePermutation = enum(u2) {
-        // zig fmt: off
-        __ = @bitCast(u2, InputState{ .a = false, .b = false }),
-        a_ = @bitCast(u2, InputState{ .a = true,  .b = false }),
-        _b = @bitCast(u2, InputState{ .a = false, .b = true }),
-        ab = @bitCast(u2, InputState{ .a = true,  .b = true }),
-        // zig fmt: on
     };
 };
 
 fn expectDecisionWithBias(
     il: *InputLock,
-    inputs: InputLock.InputState,
+    inputs: Input,
     comptime bias: InputLock.Decision,
     expected: InputLock.Decision,
 ) !void {
@@ -98,7 +104,7 @@ fn expectDecisionWithBias(
 }
 fn expectDecision(
     il: *InputLock,
-    inputs: InputLock.InputState,
+    inputs: Input,
     expected: InputLock.Decision,
 ) !void {
     return expectDecisionWithBias(il, inputs, .none, expected);
@@ -106,10 +112,10 @@ fn expectDecision(
 
 test {
     var ncs = InputLock.init();
-    const _______ = comptime InputLock.InputState{ .a = false, .b = false };
-    const @"<== " = comptime InputLock.InputState{ .a = true, .b = false };
-    const @" ==>" = comptime InputLock.InputState{ .a = false, .b = true };
-    const @"<==>" = comptime InputLock.InputState{ .a = true, .b = true };
+    const _______ = comptime Input{ .a = false, .b = false };
+    const @"<== " = comptime Input{ .a = true, .b = false };
+    const @" ==>" = comptime Input{ .a = false, .b = true };
+    const @"<==>" = comptime Input{ .a = true, .b = true };
 
     try expectDecision(&ncs, _______, .none);
     try expectDecision(&ncs, _______, .none);
