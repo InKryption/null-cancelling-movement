@@ -6,25 +6,25 @@ pub const Input = packed struct(u2) {
     b: bool,
 
     inline fn permutation(input: Input) Permutation {
-        return @intToEnum(Permutation, @bitCast(u2, input));
+        return @enumFromInt(@as(u2, @bitCast(input)));
     }
     const Permutation = enum(u2) {
-        ab = @bitCast(u2, Input{ .a = true, .b = true }),
-        a_ = @bitCast(u2, Input{ .a = true, .b = false }),
-        _b = @bitCast(u2, Input{ .a = false, .b = true }),
-        __ = @bitCast(u2, Input{ .a = false, .b = false }),
+        ab = @bitCast(Input{ .a = true, .b = true }),
+        a_ = @bitCast(Input{ .a = true, .b = false }),
+        _b = @bitCast(Input{ .a = false, .b = true }),
+        __ = @bitCast(Input{ .a = false, .b = false }),
     };
 };
 
 pub const InputLock = enum(u3) {
-    inactive = @bitCast(u3, State{ .held_by = .none, .contested = false }),
-    stalemate = @bitCast(u3, State{ .held_by = .none, .contested = true }),
+    inactive = @bitCast(State{ .held_by = .none, .contested = false }),
+    stalemate = @bitCast(State{ .held_by = .none, .contested = true }),
 
-    a_exclusive = @bitCast(u3, State{ .held_by = .a, .contested = false }),
-    a_contested = @bitCast(u3, State{ .held_by = .a, .contested = true }),
+    a_exclusive = @bitCast(State{ .held_by = .a, .contested = false }),
+    a_contested = @bitCast(State{ .held_by = .a, .contested = true }),
 
-    b_exclusive = @bitCast(u3, State{ .held_by = .b }),
-    b_contested = @bitCast(u3, State{ .held_by = .b, .contested = true }),
+    b_exclusive = @bitCast(State{ .held_by = .b }),
+    b_contested = @bitCast(State{ .held_by = .b, .contested = true }),
 
     pub const Decision = enum(u2) { none, a, b };
 
@@ -33,7 +33,7 @@ pub const InputLock = enum(u3) {
     }
 
     pub inline fn decision(inlock: InputLock) Decision {
-        const inlock_state = @bitCast(State, @enumToInt(inlock));
+        const inlock_state: State = @bitCast(@intFromEnum(inlock));
         return inlock_state.held_by;
     }
     comptime {
