@@ -23,7 +23,7 @@ pub const InputLock = enum(u3) {
     a_exclusive = @bitCast(State{ .held_by = .a, .contested = false }),
     a_contested = @bitCast(State{ .held_by = .a, .contested = true }),
 
-    b_exclusive = @bitCast(State{ .held_by = .b }),
+    b_exclusive = @bitCast(State{ .held_by = .b, .contested = false }),
     b_contested = @bitCast(State{ .held_by = .b, .contested = true }),
 
     pub const Decision = enum(u2) { none, a, b };
@@ -110,7 +110,29 @@ fn expectDecision(
     return expectDecisionWithBias(il, inputs, .none, expected);
 }
 
-test {
+test InputLock {
+    for (comptime std.enums.values(InputLock)) |state| {
+        inline for (.{ .none, .a, .b }) |bias| {
+            try std.testing.expectEqual(InputLock.inactive, InputLock.updateCopy(state, .{ .a = false, .b = false }, bias));
+            try std.testing.expectEqual(InputLock.a_exclusive, InputLock.updateCopy(state, .{ .a = true, .b = false }, bias));
+            try std.testing.expectEqual(InputLock.b_exclusive, InputLock.updateCopy(state, .{ .a = false, .b = true }, bias));
+        }
+    }
+    try std.testing.expectEqual(InputLock.stalemate, InputLock.updateCopy(.inactive, .{ .a = true, .b = true }, .none));
+    try std.testing.expectEqual(InputLock.stalemate, InputLock.updateCopy(.stalemate, .{ .a = true, .b = true }, .none));
+    try std.testing.expectEqual(InputLock.b_contested, InputLock.updateCopy(.a_exclusive, .{ .a = true, .b = true }, .none));
+    try std.testing.expectEqual(InputLock.a_contested, InputLock.updateCopy(.b_exclusive, .{ .a = true, .b = true }, .none));
+
+    try std.testing.expectEqual(InputLock.a_contested, InputLock.updateCopy(.inactive, .{ .a = true, .b = true }, .a));
+    try std.testing.expectEqual(InputLock.a_contested, InputLock.updateCopy(.stalemate, .{ .a = true, .b = true }, .a));
+    try std.testing.expectEqual(InputLock.b_contested, InputLock.updateCopy(.a_exclusive, .{ .a = true, .b = true }, .a));
+    try std.testing.expectEqual(InputLock.a_contested, InputLock.updateCopy(.b_exclusive, .{ .a = true, .b = true }, .a));
+
+    try std.testing.expectEqual(InputLock.b_contested, InputLock.updateCopy(.inactive, .{ .a = true, .b = true }, .b));
+    try std.testing.expectEqual(InputLock.b_contested, InputLock.updateCopy(.stalemate, .{ .a = true, .b = true }, .b));
+    try std.testing.expectEqual(InputLock.b_contested, InputLock.updateCopy(.a_exclusive, .{ .a = true, .b = true }, .b));
+    try std.testing.expectEqual(InputLock.a_contested, InputLock.updateCopy(.b_exclusive, .{ .a = true, .b = true }, .b));
+
     var ncs = InputLock.init();
     const _______ = comptime Input{ .a = false, .b = false };
     const @"<== " = comptime Input{ .a = true, .b = false };
