@@ -28,9 +28,7 @@ pub const InputLock = enum(u3) {
 
     pub const Decision = enum(u2) { none, a, b };
 
-    pub inline fn init() InputLock {
-        return .inactive;
-    }
+    pub const init: InputLock = .inactive;
 
     pub inline fn decision(inlock: InputLock) Decision {
         const inlock_state: State = @bitCast(@intFromEnum(inlock));
@@ -133,7 +131,7 @@ test InputLock {
     try std.testing.expectEqual(InputLock.b_contested, InputLock.updateCopy(.a_exclusive, .{ .a = true, .b = true }, .b));
     try std.testing.expectEqual(InputLock.a_contested, InputLock.updateCopy(.b_exclusive, .{ .a = true, .b = true }, .b));
 
-    var ncs = InputLock.init();
+    var ncs = InputLock.init;
     const _______ = comptime Input{ .a = false, .b = false };
     const @"<== " = comptime Input{ .a = true, .b = false };
     const @" ==>" = comptime Input{ .a = false, .b = true };

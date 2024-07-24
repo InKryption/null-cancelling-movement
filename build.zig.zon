@@ -1,0 +1,9 @@
+.{
+    .name = "null-cancelling-input",
+    .version = "0.0.1",
+    .paths = .{
+        "build.zig.zon",
+        "build.zig",
+        "input-lock.zig",
+    },
+}
