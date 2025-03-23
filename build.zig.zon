@@ -1,6 +1,9 @@
 .{
-    .name = "null-cancelling-input",
+    .name = .null_cancelling_movement,
     .version = "0.0.1",
+    .fingerprint = 0xc79c20c730a27827, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.0-dev.77+aa8aa6625",
+    .dependencies = .{},
     .paths = .{
         "build.zig.zon",
         "build.zig",
