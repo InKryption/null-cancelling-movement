@@ -35,7 +35,7 @@ pub const InputLock = enum(u3) {
         return inlock_state.held_by;
     }
     comptime {
-        for (@typeInfo(InputLock).Enum.fields) |field| {
+        for (@typeInfo(InputLock).@"enum".fields) |field| {
             const tag = @field(InputLock, field.name);
             switch (tag) {
                 .inactive => assert(decision(tag) == .none),
