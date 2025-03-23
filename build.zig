@@ -24,6 +24,9 @@ pub fn build(b: *Build) void {
         .optimize = optimize,
     });
 
+    // for local testing only
+    if (!is_root) return;
+
     const unit_test_exe = b.addTest(.{
         .name = "unit-test",
         .root_module = main_mod,
