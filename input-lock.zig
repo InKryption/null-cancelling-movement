@@ -73,56 +73,59 @@ test Lock {
     const @" ==>": Input = .b;
     const @"<==>": Input = .ab;
 
+    const left: Decision = .a;
+    const right: Decision = .b;
+
     try expectDecision(&ncs, _______, .none);
     try expectDecision(&ncs, _______, .none);
-    try expectDecision(&ncs, @"<== ", .a);
+    try expectDecision(&ncs, @"<== ", left);
     try expectDecision(&ncs, _______, .none);
-    try expectDecision(&ncs, @" ==>", .b);
+    try expectDecision(&ncs, @" ==>", right);
     try expectDecision(&ncs, _______, .none);
     try expectDecision(&ncs, @"<==>", .none); // extremely rare case (no input followed by simultaneous inputs)
     try expectDecision(&ncs, _______, .none);
-    try expectDecisionWithBias(&ncs, @"<==>", .a, .a); // simultaneous inputs can be handled with bias
-    try expectDecisionWithBias(&ncs, @"<==>", .a, .a);
-    try expectDecisionWithBias(&ncs, @"<==>", .b, .a); // <- bias doesn't affect the normal case
-    try expectDecisionWithBias(&ncs, @"<==>", .b, .a);
-    try expectDecision(&ncs, @"<==>", .a);
+    try expectDecisionWithBias(&ncs, @"<==>", .a, left); // simultaneous inputs can be handled with bias
+    try expectDecisionWithBias(&ncs, @"<==>", .a, left);
+    try expectDecisionWithBias(&ncs, @"<==>", .b, left); // <- bias doesn't affect the normal case
+    try expectDecisionWithBias(&ncs, @"<==>", .b, left);
+    try expectDecision(&ncs, @"<==>", left);
     try expectDecision(&ncs, _______, .none);
-    try expectDecisionWithBias(&ncs, @"<==>", .b, .b); // ^
-    try expectDecisionWithBias(&ncs, @"<==>", .b, .b);
-    try expectDecisionWithBias(&ncs, @"<==>", .a, .b);
-    try expectDecisionWithBias(&ncs, @"<==>", .a, .b);
-    try expectDecision(&ncs, @"<==>", .b);
+    try expectDecisionWithBias(&ncs, @"<==>", .b, right); // ^
+    try expectDecisionWithBias(&ncs, @"<==>", .b, right);
+    try expectDecisionWithBias(&ncs, @"<==>", .a, right);
+    try expectDecisionWithBias(&ncs, @"<==>", .a, right);
+    try expectDecision(&ncs, @"<==>", right);
     try expectDecision(&ncs, _______, .none);
 
     try expectDecision(&ncs, _______, .none);
-    try expectDecision(&ncs, @"<== ", .a);
-    try expectDecision(&ncs, @" ==>", .b);
-    try expectDecision(&ncs, @"<== ", .a);
-    try expectDecision(&ncs, @" ==>", .b);
+    try expectDecision(&ncs, @"<== ", left);
+    try expectDecision(&ncs, @" ==>", right);
+    try expectDecision(&ncs, @"<== ", left);
+    try expectDecision(&ncs, @" ==>", right);
     try expectDecision(&ncs, _______, .none);
-    try expectDecision(&ncs, @"<== ", .a);
-    try expectDecision(&ncs, @"<==>", .b);
-    try expectDecision(&ncs, @" ==>", .b);
-    try expectDecision(&ncs, @"<==>", .a);
-    try expectDecision(&ncs, @"<== ", .a);
+    try expectDecision(&ncs, @"<== ", left);
+    try expectDecision(&ncs, @"<==>", right);
+    try expectDecision(&ncs, @" ==>", right);
+    try expectDecision(&ncs, @"<==>", left);
+    try expectDecision(&ncs, @"<== ", left);
     try expectDecision(&ncs, _______, .none);
-    try expectDecision(&ncs, @" ==>", .b);
-    try expectDecision(&ncs, @"<==>", .a);
-    try expectDecision(&ncs, @"<== ", .a);
-    try expectDecision(&ncs, @"<==>", .b);
-    try expectDecision(&ncs, @" ==>", .b);
+    try expectDecision(&ncs, @" ==>", right);
+    try expectDecision(&ncs, @"<==>", left);
+    try expectDecision(&ncs, @"<== ", left);
+    try expectDecision(&ncs, @"<==>", right);
+    try expectDecision(&ncs, @" ==>", right);
     try expectDecision(&ncs, _______, .none);
-    try expectDecision(&ncs, @"<== ", .a);
-    try expectDecision(&ncs, @"<==>", .b);
-    try expectDecision(&ncs, @"<== ", .a);
-    try expectDecision(&ncs, @"<==>", .b);
-    try expectDecision(&ncs, @" ==>", .b);
+    try expectDecision(&ncs, @"<== ", left);
+    try expectDecision(&ncs, @"<==>", right);
+    try expectDecision(&ncs, @"<== ", left);
+    try expectDecision(&ncs, @"<==>", right);
+    try expectDecision(&ncs, @" ==>", right);
     try expectDecision(&ncs, _______, .none);
-    try expectDecision(&ncs, @" ==>", .b);
-    try expectDecision(&ncs, @"<==>", .a);
-    try expectDecision(&ncs, @" ==>", .b);
-    try expectDecision(&ncs, @"<==>", .a);
-    try expectDecision(&ncs, @"<== ", .a);
+    try expectDecision(&ncs, @" ==>", right);
+    try expectDecision(&ncs, @"<==>", left);
+    try expectDecision(&ncs, @" ==>", right);
+    try expectDecision(&ncs, @"<==>", left);
+    try expectDecision(&ncs, @"<== ", left);
     try expectDecision(&ncs, _______, .none);
 }
 
